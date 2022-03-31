@@ -922,3 +922,452 @@ childB.setAttribute("foo","bar");
 调用disconnect（）方法会停止观察所有目标。
 
 ##### 5)重用MutationObserv
+	调用disconnect（）方法不会接收MutationObserver的生命。可以将Observer重新关联到新的（或者原来的）目标节点。
+
+```javascript
+//连接设置一次关联
+setTimeout{()=>{
+    observer.disconnect();
+    //下行代码不会触发变化事件
+    document.body.setAttribute("bar","baz");
+},0};
+setTimeout{()=>{
+    //重关联
+    observer.observe(document.body,{attribute:ture});
+    //这行代码会触发变化事件 
+    document.body.setAttribute("baz","qux");
+},0);
+```
+
+#### (2)MutationObserverInit与观察范围
+
+MutationObserverInit对象用于控制对目标节点的观察范围。
+
+MutationObserverInit对象的属性
+
+| 属性                  | 说明                                                         |
+| --------------------- | ------------------------------------------------------------ |
+| subtree               | 布尔值，表示除了目标节点，是否观察目标节点的子树（后代），默认为false。 |
+| attributes            | 布尔值，表示是否观察目标节点的属性，默认为false。            |
+| attributeFilter       | 字符串数组，表示要观察哪些属性的变化。把值设置为true会将attributes的值转换为true。默认观察所有属性。 |
+| attributeOldValue     | 布尔值，表示MutationRecord是否记录变化之前的属性值。把值设置为true会将attributes的值转换为true。默认为false |
+| characterDate         | 布尔值，表示修改字符数据是否触发变化事件。默认是false        |
+| characterDateOldValue | 布尔值，表示MutationRecord是否记录之前的字节数据。把值设置为true会将characterDate的值转换为true。默认为false |
+| childList             | 布尔值，表示修改目标的子节点是否触发变化事件。默认为false。  |
+
+在调用observe（）方法时，attributes、characterDate、chlidList属性必须至少有一项为真（包括设置其他属性导致以上属性为真），否则会抛出错误。
+
+##### 1)观察属性
+
+```javascript
+{attributes:true}
+{attributeFilter:["foo","boo"]}//添加入白名单
+{attributeOldValue:true}
+```
+
+设置观察属性变化，包括添加、修改、删除属性。
+
+可以用attributeFilter观察包含在数组内的属性的变化。
+
+设置attributeOldValue可以将本次修改属性的上一次属性值返回。特别的，当首次添加属性到节点时，由于上一次未存在，因此返回"null"。
+
+##### 2)观察字符数据
+
+```javascript
+{characterDate:true}
+{characterDateOldValue:true}
+```
+
+设置观察文本节点变化（如text、comment或ProcessingInstruction节点），包括添加、修改、删除文本。
+
+设置characterDateOldValue可以将本次修改文本的上一次文本字符数据返回。特别的，当首次添加文本到节点时，由于上一次未存在，因此返回"null"。 
+
+##### 3)观察子节点
+
+```javascript
+{childList:true}
+//设置观察对象，创建两个初始子节点在ChildList中。
+//调用insertBefore方法交互两个子节点。
+document.insertBfore(document.body.lastChild,document.body.firstChild,)
+//返回两次回调函数。
+```
+
+设置观察目标节点的子节点变化，包括添加、移除子节点（appendChild、removeChild方法）。
+
+对子节点重现排序会报告两次变化事件。
+
+##### 4)观察子树
+
+```javascript
+{subtree:true}
+```
+
+设置观察的范围扩展到对应节点的子树（所有后代节点）。
+
+对于被移出子树的被观察子树的节点，仍然能触发变化事件。
+
+#### (3)异步回调与记录队列
+
+##### 1)记录队列
+
+MutationRecord被添加到MutationObserver的记录队列时，仅当之前没有已排期的微任务回调时（队列中微任务长度为0），才会将观察者注册的回调（在初始化MutationObserver时传入）作为微任务调度到任务队列上。
+
+回调的微任务异步执行期间，被调用的回调会接收并处理一个MutationRecord实例的数组，顺序为进入记录队列的顺序。处理后函数退出实现就不存在。回调执行后，MutationRecord用不着，因此记录队列会被清空，其内容会被丢弃。
+
+##### 2)takeRecords（）方法
+
+调用MutationObserver实例的takeRecord（）方法可以清空记录队列，取出并返回其中所有的MutationRecord实例，如下：
+
+```javascript
+//回调函数设置为((MutationRecord)=>{console.log(MutationRecord)})
+//设置观察对象{Attributes:true},触发三次变化事件
+console.log(observe.takeRecord());
+console.log(observe.takeRecord());
+//返回三个回调记录
+//返回空数组（取出后清空）
+```
+
+方法用于断开与观察目标又希望处理用于调用disconnect（）方法而被抛弃的记录队列中的MutationRecord实例。
+
+#### (4)性能、内存与垃圾回收
+
+##### 1)MutationObserver的引用
+
+MutationObserver实例对目标节点的引用为弱引用，不会妨碍垃圾回收程序回收目标节点。
+
+目标节点对MutationObserver实例的引用为强引用，目标节点移除后被垃圾回收，关联的MutationObserver也会被垃圾回收。
+
+##### 2)MutationRecord的引用
+
+被记录MutationObserver实例根据target类型不同，会包含DOM节点至少一个引用（childList对应多个）。回调默认行为是耗尽记录队列，处理后让它们超出作用域并被垃圾回收。
+
+保存MutationRecord实例也会保存引用的节点，会防止节点回收。如需尽快释放内存，建议提取MutationRecord中有用的信息，保存至新对象，最后抛弃MutationRecord。
+
+## 四、DOM扩展
+
+### 1、Selector API
+
+Selector API规定了浏览器原生支持CSS查询API，即根据CSS选择符的模式匹配DOM元素，替代getElementById（）和getElementByTagName（）方法。包含querySelector（）和querySelectorAll（）方法，方法可用于document、Element。支持css选择器。
+
+#### (1)querySelector（）
+
+querySelector（）接收css选择符参数，返回匹配该模式的第一个后代元素，没有匹配的返回null。
+
+（包括标签选择“div”、类选择“.class”、id选择“#id”）
+
+document上使用时从文档元素开始搜索，element上使用时只会从当前元素的后代中查询。
+
+#### (2)querySelectorAll（）
+
+与querySelector（）一致，但返回包含满足选择要求的ChidList，没有则返回空数组。
+
+#### (3)matchse（）
+
+matchse（）方法接收一个css选择符参数，如果元素匹配则选择器返回true，否则返回false。
+
+使用该方法可以验证元素是否能被以上方法返回，
+
+### 2、元素遍历
+
+元素间的空格在ie9之前的版本不会被当为空白节点，但其他浏览器会。这导致了childNodes和firstChild等属性的差异。为了弥补这个差异，通过新的ElementTraversal定义了属性，作用于DOM元素。
+
+childElementCount，返回子元素数量（不包含文字节点和注释）
+
+firstElementChild，指向第一个元素节点，与firstChild类似。
+
+lastElementChild，指向最后一个元素节点，与lastChild类似。
+
+previousElementSibling，指向目标元素前一个同胞元素节点，与previousSibling类似
+
+nextElementSibling，指向目标元素后一个同胞元素节点，与nextSibling类似
+
+方法摆脱了空白节点的困扰。
+
+### 3、HTML5
+
+HTML5提供了与标记相关的JavaScript的API定义，有些定义了DOM扩展。
+
+#### (1)css类扩展
+
+##### 1)getElementByClassName（）
+
+getElementByClassName（）方法接收一个或多个类名的字符串，返回相应类名元素的NodeList（包括子树内的所有同类名元素），作用于document对象和所有元素对象上。
+
+```javascript
+//返回类名为username current的元素
+document.getElementByClassName("username current");
+```
+
+##### 2)classList属性
+
+HTML5之前操作类名，需要通过className属性实现，经切片、寻找检索、删除、重新设置类名后完成。
+
+HTML5对所有元素增加classList属性，是集合类型DOMTokenList的实例。DOMTokenList有length属性，可以通过item（）或 [ ] 获取个别元素。同时对数列包含以下方法：
+
+add(value)：向类名列表中添加指定的字符串值value，如存在则不变。
+
+contains(value)：返回布尔值，表示给定的value是否存在。
+
+remove(value)：从类名列表中删除指定字符串值value。
+
+toggle(value)：如类名已存在指定value，则删除；若不存在，则添加。
+
+如此，操作类名可简化为：
+
+```javascript
+div.classList.remove("user");
+```
+
+#### (2)焦点管理
+
+增加辅助DOM焦点管理功能：document.activeElement。属性始终包含当前拥有焦点的DOM元素。
+
+Element.focus（）方法设置element为焦点。
+
+document.hasfocus（）接收一个元素节点，返回布尔值，表示是否拥有焦点。
+
+#### (3)HTMLDocument扩展
+
+##### 1)readystate属性
+
+document.readystate属性返回两个两个值：loading（表示文档正在加载）/complete（表示文档加载完成）。
+
+开发中常作为指示器判断文档是否加载完毕，如下：
+
+```javascript
+if(document.readystate =="complete"){
+	//执行操作
+}
+```
+
+##### 2)compatMode属性
+
+document.compatMode指示浏览器当前处于 标准模式（返回：CSS1Compat）或是混杂模式（返回：BackCompat）
+
+##### 3)head属性
+
+HTML5把文档的head标签指向标准化。
+
+document.head指向文档的<head>元素。
+
+#### (4)字符集属性
+
+document.characterSet属性表示文档使用的字符集，也可以设置新字符集。默认为UTF-16。可通过<mete>属性和characterSet属性修改。
+
+#### (5)自定义数据属性
+
+可以给元素指定非标准的属性，需要使用前缀 ”data-“ 。这些属性不包含与渲染有关的信息，也不包含元素的语义信息。
+
+定义了自定义数据属性后可通过元素的dataset属性访问。dataset属性是一个DOMStringMap实例，包含一组值/对映射。data-name属性在dataset可以用data-后面的字符串作为键来访问。
+
+自定义数据属性适用于需要给元素附加某些数据的场景，如链接追踪和在聚合应用程序中标识页面不同部分，也用于单页应用程序框架中。
+
+#### (6)插入标记
+
+##### 1)innerHTML属性
+
+读取innerHTML属性返回目标元素所有后代的HTML字符串，包括元素、注释和文本节点。写入时根据字符串替换掉原来元素包含的所有节点，如没有标签则插入文本节点。（写入字符串格式为HTML。）
+
+##### 2)旧版本IE的innerHTML
+
+##### 3)outerHTML属性
+
+读取)outerHTML属性返回目标元素及所有后代的HTML字符串（与innerHTML的不同点），写入时替换本身及后代节点。
+
+##### 4)insertAdjacentHTML（）和insertAdjacentText（）
+
+insertAdjacentHTML（）和insertAdjacentText（）方法接收要插入标签的位置和要插入的HTML或文本两个参数。第一个参数必须是以下其中一个值：
+"beforbegin"：插入当前元素前边，作为前一个同胞节点
+
+"afterbegin"：插入当前元素内部，作为新的子节点或者在第一个子节点前面
+
+"beforeend"：插入当前元素内部，作为新的子节点或者在最后一个子节点后面
+
+"afterbend"：插入当前元素后边，作为后一个同胞节点
+
+当是HTML时，会在解析出错时抛出错误。
+
+##### 5)内存与性能问题
+
+使用以上涉及的属性和方法操作节点会由于事件关联或JavaScript对象引用的关系滞留在内存中（当移除时），频繁操作导致内存占用攀升。因此使用前最好手动删除被替换元素关联的事件处理程序和JavaScript对象。
+
+同时应该控制innerHTML和outerHTML的次数，不进行循环。
+
+##### 6)跨站点脚本
+
+使用innerHTML暴露了很大的攻击面，特别对于页面要使用到用户的信息，用innerHTML传入极易遭受xss攻击，需要隔离要插入的数据，用相关库进行转义。
+
+#### (7)scrollIntoView（）
+
+scrollIntoView（）方法存在于所有HTML元素上，可以滚动浏览器窗口或容器元素一遍包含元素进入视口。参数如下：
+
+alignToTop是一个布尔值。"true"：窗口滚动后元素的顶部与视口顶部对其。"false"：窗口滚动后元素的地步与视口底部对齐。
+
+scrollIntoViewOpotions是一个选项对象。
+
+"behavior"：定义过渡动画，有"smooth"、"auto"可选，默认为"auto"。
+
+"block"：定义垂直方向的对齐，有"start"、"center"、"end"、"nearest"，默认为"start"。
+
+"inline"：定义水平方向的对齐，有"start"、"center"、"end"、"nearest"，默认为"nearest"。
+
+### 4、专有扩展
+
+#### (1)children属性
+
+IE9之前版本与其他浏览器在处理空白文本节点上的差异导致children属性出现。
+
+children是一个HTMLCollection，只包含元素的Element类型的子节点。
+
+#### (2)contains（）方法
+
+contains（）方法接收一个目标节点，应用于要搜索的元素上，判断目标节点是否在被搜索的元素上。
+
+compareDocumentPosition（）方法也可以确认节点关系。会返回表示两个节点关系的位掩码。
+
+| 掩码 | 节点关系                             |
+| ---- | ------------------------------------ |
+| 0x1  | 断开（目标节点不在文档中）           |
+| 0x2  | 领先（目标节点在被搜索节点之前）     |
+| 0x4  | 随后（目标节点在被搜索节点之后）     |
+| 0x8  | 包含（目标节点是被搜索节点的祖先）   |
+| 0x10 | 被包含（目标节点是被搜索节点的后代） |
+
+#### (3)插入标记
+
+innerText，读取子树的文本并按深度优先的顺序将文本凭借起来。写入时移除元素的所有后代写入一个文本节点。
+
+outerText，参照innerText，但包含调用的元素。
+
+#### (4)滚动
+
+其他浏览器有专用控制滚动的扩展，但scrollIntoView（）所有浏览器均支持。
+
+## 六、事件
+
+JavaScript与HTML的交互通过事件实现。事件代表文档或浏览器窗口中某个有意义的时刻，可以使用仅在事件发生时执行的监听器订阅事件。以上触发模型叫“观察者模式”。
+
+可以做到页面行为（js定义）和页面展示（HTML、CSS定义）分离。
+
+### 1、事件流
+
+事件流描述页面接收事件的顺序（假设HTML节点嵌套，从内部节点到外部节点或从外部节点到内部节点触发的顺序视为接收事件的顺序）。IE支持事件冒泡流，Netscape支持事件捕获流。两种方案截然不同。
+
+#### (1)事件冒泡
+
+事件冒泡指事件顺序由内部向外部扩大，由具体元素向上层元素触发。
+
+现代浏览器支持事件冒泡，一直冒泡至window对象。
+
+#### (2)事件捕获
+
+事件捕获指最大包容节点最先触发，并往下传播。
+
+现代浏览器支持事件捕获，但由于旧版本浏览器不支持，因此实际不会使用事件捕获。
+
+#### (3)DOM事件流
+
+规范规定事件流分为三个阶段：事件捕获、到达目标、事件冒泡。条件捕获开始，为提前拦截时间提供了可能，实际目标元素接收到事件，事件冒泡最后，最迟在此阶段响应时间。
+
+### 2、事件处理程序
+
+#### (1)HTML事件处理程序
+
+在HTML的事件处理程序形如：
+
+```html
+<input type="button" onclick="console.log('abc')"/>
+<input type="button" onclick="console.log(this.type)"/> //返回input的type属性值“button”
+```
+
+事件名前添加on，作为属性添加入标签中。值为执行的代码，可以以行内格式、内部引用和外部引用实现，可以访问全局作用域的一切。
+
+通过HTML方式创建的事件处理程序有特殊的地方。会创建一个函数封装onclick的值，这个函数有一个特殊的局部变量event，保存event对象。
+
+行内的this指向目标元素。
+
+创建的函数的作用域扩展，可以往上访问（一直到document），通过with（）实现。即可以快速访问到同胞或父节点的属性（通过name的值访问）。
+
+由HTML创建的执行代码，必须要在被触发前被定义，否则抛出JavaScript错误，常见用try/catch(ex)封装，在报错前拦截。
+
+#### (2)DOM0事件处理程序
+
+JavaScript中指定事件处理程序是从赋值给属性层面进行。
+
+```javascript
+//假设存在<input type="button" id="mybtn"/>
+let btn = document.getElementById("mybtn");
+btn.setAttribute("onclick");
+btn.onclick = function() {
+    console.log("click!") //console.log(this.id)返回mybtn
+}
+```
+
+函数内部this指向目标元素。可访问元素的属性及方法。
+
+将onclick赋值null，即可移除添加的事件处理程序，适用于HTML类型。
+
+#### (3)DOM2事件处理程序
+
+addEventListener（）、removeEventListener（）方法：接收 事件名、事件处理函数、布尔值三个参数，用于所有DOM节点，true表示在捕获阶段调用事件处理程序，false（默认值）表示在冒泡阶段调用事件处理程序。
+
+```javascript
+let btn = document.getElementById("mybtn");
+btn.addEventListener("click",()=>{
+    console.log(this.id)
+},false);
+```
+
+使用DOM2的优势是可以为同一个事件添加多个处理程序。当同一事件触发函数时，以添加的顺序来触发。
+
+由addEventListener（）方法添加的事件处理程序需要用removeEventListener按相同参数移除，事件处理函数用匿名函数无法被移除。
+
+大部分事件处理程序被注册至冒泡阶段，其兼容性好，注册至捕获阶段通常用于在事件到达目标节点前拦截。
+
+#### (4)IE事件处理程序
+
+attachEvent（）、detachEvent（）方法接收 事件处理程序的名字、事件处理函数。使用attachEvent（）添加的程序只会添加到冒泡阶段。
+
+在IE事件处理程序与DOM0事件处理程序中，主要区别是事件处理程序运行的作用域不同，IE运行在全局作用域。
+
+attachEvent（）也可以为同一事件添加多个处理程序，与addEventListener（）不同，按添加它们的反向触发，即后进先出。
+
+#### (5)跨浏览器事件处理程序
+
+先用DOM2、IE，最后检测DOM0（兼容性最低）。·	
+
+```JavaScript
+//用一个对象包含两个函数分类添加和移除事件处理程序
+var EventUitl ={
+	addhandler:function(element,type,handler){
+		if(element.addEventListener){
+			element.addEventListener(type,handler,false);
+		}else if(element.attachEvent){
+			element.attachEvent("on"+type,handler);
+		}else{
+			element["on"+type] = handler;
+		}
+	},
+	removehandler:function(element,type,handler){
+		if(element.removeEventListener){
+			element.removeEventListener(type,handler,false);
+		}else if(element.detachEvent){
+			element.detachEvent("on"+type,handler);
+		}else{
+			element["on"+type] = null;
+		}
+	}
+};
+//引用似例
+let elementbtn = document.createElement("button");
+document.body.appendChild(elementbtn);
+elementbtn.setAttribute("id","mybtn");
+elementbtn.appendChild(document.createTextNode("点击！"))
+let btn = document.getElementById("mybtn");
+let printId = function(){console.log(this.id)};//必须为一个函数
+EventUitl.addhandler(btn,"click",printId);
+```
+
+### 3、事件对象
+
+DOM发生事件时，所有相关信息都会收集在event对象中，包含 导致事件的元素、发生的事件类型，以及可能
