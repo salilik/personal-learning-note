@@ -1370,4 +1370,217 @@ EventUitl.addhandler(btn,"click",printId);
 
 ### 3、事件对象
 
-DOM发生事件时，所有相关信息都会收集在event对象中，包含 导致事件的元素、发生的事件类型，以及可能
+DOM发生事件时，所有相关信息都会收集在event对象中，包含 导致事件的元素、发生的事件类型，以及可能与特定事件相关的任何其他数据。例如，鼠标操作导致的事件会生成鼠标位置信息，而键盘操作导致的事件会生成与被按下的键有关的信息。
+
+#### (1)DOM事件对象
+
+DOM合规浏览器中，event对象是传给事件处理程序的唯一参数。（无论使用DOM0，还是DOM2方式）
+
+事件包含的属性及方法如下：
+
+| 属性/方法                  | 类型         | 读/写 | 说明                                                         |
+| -------------------------- | ------------ | ----- | ------------------------------------------------------------ |
+| bubbles                    | 布尔值       | 只读  | 表示事件是否冒泡                                             |
+| cancelable                 | 布尔值       | 只读  | 表示是否可以取消事件的默认行为                               |
+| currentTarget              | 元素         | 只读  | 事件处理程序所在的元素                                       |
+| defaultPrevented           | 布尔值       | 只读  | true表示调用preventDefault（）方法（DOM3事件新增）           |
+| detail                     | 整数         | 只读  | 事件相关的其他信息                                           |
+| eventPhase                 | 整数         | 只读  | 表示调用事件处理程序的阶段：1、代表捕获阶段；2、代表到达目标；3、代表冒泡阶段 |
+| preventDefault()           | 函数         | 只读  | 用于取消事件的默认行为，只有cancelable为true才可以调用这个方法 |
+| stopImmediatePropagation() | 函数         | 只读  | 用于取消后续事件捕获或事件冒泡，并阻止调用任何后续事件处理程序（DOM3事件新增） |
+| stopPropagation()          | 函数         | 只读  | 用于取消所有后续事件或事件冒泡。只有bubbles为true才可以调用这个方法 |
+| target                     | 元素         | 只读  | 事件目标                                                     |
+| trusted                    | 布尔值       | 只读  | true表示事件是由浏览器生成的。false表示事件是开发者通过js创建的（DOM3 事件新增，如vue自定义事件） |
+| type                       | 字符串       | 只读  | 被触发的事件类型                                             |
+| View                       | AbseractView | 只读  | 与事件相关的抽象视图。等于事件所发生的window对象。           |
+
+- 事件处理程序中，this的对象是currentTa的值(事件处理程序所在位置)，target为事件目标(事件触发所在的位置)。如果事件处理程序直接添加在事件目标上，则this、currentTarget、target的值一致。如：添加在button上的由本标签click触发的事件处理程序。
+- 当onclick事件处理程序添加至button所在body中时，点击button，click事件会冒泡至body上才触发事件处理程序。在此例子中，target为button(事件发起者)，currentTarget为body(事件处理程序所在位置)
+- type属性用于一个处理程序处理多个事件，用switch语句，将event.type的不同值case不同的操作。
+- preventDefault（）方法阻止特定事件的默认动作。如点击<a>标签时自动跳转到href链接，用event.preventDefaule()取消。通过该方法取消的事件，其event对象的cancelable属性都会设置为true。
+- stopPropagation（）方法用于阻止事件流在DOM结构中传播。以click事件处理程序添加至button所在body中 为例，在button本身的click事件处理程序中添加event.stopPropagation()，当click时，button上的事件处理程序会触发，而body上的事件处理程序不会触发（取消传播）
+- eventPhase属性确认当前事件处理程序在事件流中的阶段。通过DOM2添加事件程序并传布尔值为true，在event.eventPhase会返回1（捕获阶段）；事件目标的事件处理程序会返回2（事件自身）；通过DOM0和DOM2添加事件程序并传布尔值为false，会返回3（冒泡阶段）
+
+#### (2)IE事件对象
+
+IE事件对象基于事件处理程序被指定的方式以不同方式来访问。事件处理程序使用DOM0定义，则event对象只是window对象的一个属性。若使用attachEvent（）指定，则event对象会作为唯一的参数传给处理函数。
+
+IE事件对象包含以下所列的公共属性和方法：
+
+| 属性/方法    | 类型   | 读/写 | 说明                                                         |
+| ------------ | ------ | ----- | ------------------------------------------------------------ |
+| cancelBubble | 布尔值 | 读/写 | 默认为false，设置为true可以取消冒泡（与DOM的stopPropagation()方法相同） |
+| returnValue  | 布尔值 | 读/写 | 默认为true，设置为false可以取消事件默认行为（与DOM的preventDefault()方法相同） |
+| srcElement   | 元素   | 只读  | 事件目标（与DOM的target属性相同）                            |
+| type         | 字符串 | 只读  | 触发的事件类型                                               |
+
+事件处理程序的作用域取决于指定它的方式，因此this不总是指向事件目标（与DOM类似）。因此，指代事件目标最好用srcElement代替this。
+
+#### (3)跨浏览器事件对象
+
+同事件处理程序一样，可通过定义函数的方式获取兼容多种浏览器的事件对象
+
+```JavaScript
+var EventUtil = {
+    getEvent: function(event){
+        return event ? event : window.event; 
+        //三元运算符，等同与
+        //if(event){
+        //	return event
+    	//}else{
+        //	window.event
+   		//}
+    },
+    getTarget: function(event){
+        return event.target||event.scrElement;// 或运算符
+    },
+	preventDefault: function(){
+        if(event.preventDefault){
+            event.preventDefault()
+        }else{
+            event.returnValue = false;
+        }
+    },
+	stopPropagation: function(event){
+        if(event.stopPropagation){
+            event.stopPropagation();
+        }else{
+            event.cancelBubble = true;
+        }
+    }
+}
+//使用跨浏览器事件对象eventutil实例
+btn.onclick = function(event){	//事件处理程序必须接收event对象。
+    event = EventUtil.getEven(event)
+}
+```
+
+getEvent（）方法的前提是事件处理程序必须接收event对象。
+
+### 4、事件类型
+
+DOM3Events定义以下类型事件：
+
+用户界面事件（涉及与BOM交互的通用浏览器事件）、
+
+焦点事件（元素获得或者失去焦点触发，用tab切换的焦点）、
+
+鼠标事件（使用鼠标在页面上执行某些操作时触发）、
+
+滚轮事件（使用鼠标滚轮（或类似设备）时触发）、
+
+输入事件（向文档中输入文本时触发）、
+
+键盘事件（使用键盘在页面上执行某些操作时触发）、
+
+合成事件（使用某种IME输入字符时触发）
+
+除此之外，HTML5还定义了另一组事件，而浏览器通常在DOM和BOM上实现专有事件。
+
+#### (1)用户界面事件
+
+load：在整个页面加载完成后触发。
+
+unload：在文档卸载完成后触发。一般是从一个页面导航到另一个页面触发。
+
+resize：浏览器窗口被缩放至新高度或新宽度时（最大化和最小化俊辉触发）。
+
+scroll：用户滚动包括滚动条的元素时在元素上触发（整个页面或者一部分页面）
+
+#### (2)焦点事件
+
+blur：当元素失去焦点时触发，事件不冒泡。
+
+focus：当元素获得焦点时触发，事件不冒泡。
+
+focusin：当元素获得焦点时触发，focus事件的冒泡版。
+
+focusout：当元素获得焦点时触发，blur事件的通用版。
+
+当焦点从页面从一个元素转移到另一元素时，依次触发一下事件：
+
+focusout（失去焦点元素触发）——focusin（获得焦点元素触发）——blur（失去焦点元素触发）——focus（获得焦点元素触发）
+
+#### (3)鼠标、滚轮事件
+
+click：单击鼠标左键或按键盘回车时触发
+
+dblclick：双击鼠标左键。
+
+mousedown：在用户按下任意鼠标键时触发。
+
+mouseenter：鼠标光标从元素外部移到元素内部时触发，事件不冒泡，经过后代元素不触发。
+
+mouseleave：鼠标光标从元素内部移到元素外部时触发，事件不冒泡，经过后代元素不触发。
+
+mousemove：鼠标光标在元素是上移动时反复触发。
+
+mouseout：鼠标光标从一个元素移动到另一元素上触发。另一个元素可以是原始元素的外部元素，也可以是其子元素。
+
+mouseover：鼠标光标从元素外部移到元素内部时触发。
+
+mouseup：在用户释放鼠标键时触发。
+
+mousewheel：滚轮滑动触发
+
+
+
+以上事件除了mouseenter和mouseleave外，其他均可以冒泡。
+
+事件之间存在关系，click事件的前提时mousedown被触发，随后在同元素触发mouseup，如两者其一被取消，则click不触发。同理dblclick也一样。
+
+双击某一元素的事件顺序如下：
+
+mousedown——mouseup——click——mousedown——mouseup——click——dblclick
+
+修饰符shift、ctrl、alt、meta，按住时触发会修改鼠标事件的行为。
+
+#### (4)键盘、输入事件
+
+keydown：用户按下键盘某个键触发，持续按住持续触发
+
+keyup：用户释放键盘某个键触发。
+
+textInput：文本被插入到文本框之前触发
+
+### 5、内存与性能
+
+#### (1)事件委托
+
+过多事件处理程序的解决方案是使用事件委托，可利用事件冒泡，可以只使用一个事件处理程序管理一种类型的事件。如click事件会冒泡到document上，这样的话可以为整个页面指定一个onclick事件处理程序，而不用为每个可点击元素分别指定事件处理程序。例：
+
+```html
+<!--假设现有以下结构-->
+<ul id='myul'>
+    <li id='sayhello'>hello</li>
+    <li id='sayworld'>world</li>
+    <li id='sayhi'>hi</li>
+</ul>
+```
+
+```javascript
+//可使用一个事件处理程序进行操作
+let ul = document.getElementById('myul')
+ul.addeventlistener('click',()=>{
+    let target = event.target
+    switch(target.id){
+        case 'sayhello':
+            console.log('hellobeclicked');
+            break;
+        case 'sayworld'
+            console.log('worldbeclicked');
+            break;
+        case 'sayhi'
+            console.log('hieclicked');
+            break;    
+    }
+});
+```
+
+建议在页面进行事件委托的有click、mousedown、mouseup、keydown
+
+#### (2)删除事件处理程序
+
+性能下降的原因大都由于无用的事件处理程序长驻内存导致。长驻内存的原因：1、用removechild（）或者replacechild（）删除了带有事件处理程序的元素。解决方法：在删除元素前移除事件处理程序。2、页面卸载。解决方法：在unloda事件处理程序中趁页面未卸载删除所有事件处理程序。
+
+
