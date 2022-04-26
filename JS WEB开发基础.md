@@ -1583,4 +1583,204 @@ ul.addeventlistener('click',()=>{
 
 性能下降的原因大都由于无用的事件处理程序长驻内存导致。长驻内存的原因：1、用removechild（）或者replacechild（）删除了带有事件处理程序的元素。解决方法：在删除元素前移除事件处理程序。2、页面卸载。解决方法：在unloda事件处理程序中趁页面未卸载删除所有事件处理程序。
 
+## 七、表单脚本
+
+### 1、表单基础
+
+web表单在html中以<form>元素存在，在js以HTMLformelement类型表示。HTMLformelement类型继承htmlelement类型，拥有与其他html元素一样的默认属性，也存在自己的属性和方法：
+
+acceptcharset：服务器可以接收的字符集，等价于HTML的accept-charset属性。
+
+action：请求的URL，等价于HTML的action属性。
+
+elements：表单中所有控件的HTMLCollection。
+
+enctype：请求的编码类型，等价于HTML的enctype属性。
+
+length：表单中控件的数量。
+
+method：http请求的方法类型，通常是“get”和“post”，等价于HTML的method属性
+
+name：表单的名字，等价于HTML的name属性。
+
+reset（）：把表单字段重置为各自的默认值。
+
+submit（）：提交表单。
+
+target：用于发送请求和接收响应的窗口的名字，等价于HTML的target属性。
+
+对<form>元素的引用。（1）将表单元素作为普通元素添加id属性，通过getelementbyid（）获取表单。
+
+（2）document.form集合可以获取页面上所有的表单元素，之后用索引值或者name属性来访问。
+
+#### (1)提交表单
+
+表单通过用户点击提交按钮或图片按钮进行提交。提交按钮需要设置type属性为”submit“的<input>或<button>元素来定义，图片按钮可以设置type属性为”image“的<input>元素来定义。通过此方法提交的表单会产生submit事件，可以添加事件处理程序阻止表单。
+
+```javascript
+//假设存在id名为myform的表单
+let form = getElementById('myform');
+form.addeventlistener('submit',(event)=>{
+	event.preventDefault();
+});
+//js提交表单方法
+form.submit()
+```
+
+可以通过js的submit（）方法来提交表单，不存在提交按钮不影响提交，但用该方法提交不产生sumbit事件，不能通过事件处理程序验证数据，所以应该在提交前先做数据验证。
+
+表单提交的最大问题是有可能会提交两次表单。解决方法：1、在表单点击后禁用提交按钮，2、通过onsubmit事件处理程序取消后续的提交。
+
+#### (2)重置表单
+
+点击type属性为“reset”的<input>或<button>的重置按钮可重置表单。经过重置表单，表单字段会变为默认值或者空值（未设置时）。通过此方法重置表单会产生“reset”事件，可依照以上方法取消重置表单。
+
+也可用用js的reset（）方法重置表单，与submit（）方法不同，经过JavaScript调用reset（）方法会触发reset事件。
+
+#### (3)表单字段
+
+ 表单元素可以通过原生DOM方法进行访问。所有的表单元素都是表单elements属性（元素集合）中包含的一个值。elements集合是一个有序列表。包含表单中所有字段的引用。包括<input>、<textarea>、<button>、<select>和<fieldset>元素。按html页面的次序保存，可以通过索引值和name属性访问。
+
+如果多个字段用了同一个name，则返回同名元素的htmlcollection。
+
+##### 1)表单字段的公共属性
+
+除<fieldset>元素外，所有表单字段都有一组同样的属性。
+
+disable：布尔值，表示表单字段是否被禁用
+
+form：指针，指向表单字段所属的表单，属性为只读。
+
+name：字符串，这个字段的名字。
+
+readOnly：布尔值，表示字段是否只读。
+
+type：字符串，表示字段类型，如checkbox、radio等
+
+value：要提交给服务器的字段值。对文件输入字段来说，这个属性是只读的，仅包含计算机上某个文件的路径。
+
+除了form属性外，可通过js动态修改任何属性。
+
+之前提到的防止多次提价表单，可以用修改表单字段的公共属性来实现：
+
+```javascript
+//假定现有id为‘myform’的表单，其提交按钮为id名mybtn的按钮
+let form = getElementById('myform');
+form.addeventlistener('submit',(event)=>{
+    let target = event.target;
+    //当表单内有多个submit时，用id寻找元素确保找到触发的字段
+   	let btn = target.element['mybtn']；
+    btn.disable = ture;
+});
+```
+
+这个功能不能通过click事件进行处理，因为根据浏览器不同，点击按钮时，触发click和submit的次序也不同，但click在submit之前触发时，则首次的提交也没有生效。
+
+type属性值：
+
+| 描述             | 实例html                        | 类型的值          |
+| ---------------- | ------------------------------- | ----------------- |
+| 单选列表         | <select></select>               | 'select-one'      |
+| 多选列表         | <select multiple></select>      | 'select-multiple' |
+| 自定义按钮       | <button></button>               | 'submit'          |
+| 自定义非提交按钮 | <button type='button'></button> | 'button'          |
+| 自定义重置按钮   | <button type='reset'></button>  | 'reset'           |
+| 自定义提交按钮   | <button type='submit'></button> | 'submit'          |
+
+对于<input>和<button>，可以动态修改其type属性，但<select>上的type是只读的。
+
+##### 2)表单字段的公共方法
+
+每个表单字段有两个方法：focus（）和blur（）。focus（）将浏览器的焦点设置到表单字段上，意味着该字段可以响应键盘事件。
+
+**在加载页面后将焦点定位在表单中的第一个字段是常见做法。**方法是在load事件添加事件处理程序并在第一个表单使用focus（）。如果第一个表单的第一个字段为type为‘hidden’的<input>元素，则代码出错。
+
+html5对字段新增autofocus属性，自动为带有该属性的元素设置焦点。为了与js的focus（）方法兼容，先检测元素上是否有autofocus属性，若无再使用focus方法。
+
+```javascript
+//假定未知表单首个字段是否添加了autofocus，对原添加方式进行改进
+window.addeventlistener('load',event=>{
+    let element = document.form[0].element[0];
+    //添加能力检测判断是否存在autofocus
+    if(element.autofocus !== true){
+        element.focus()
+    }
+})
+```
+
+blur（）方法为移除焦点，调用blur时，焦点不会转移，只是在对应字段移除了。
+
+##### 3)表单字段的公共事件
+
+blur：在字段失去焦点时触发
+
+change：在<input>和<textarea>元素额定value发生变化且失去焦点时触发，或者在<select>元素中选中项发生变化时触发
+
+focus：在字段获得焦点时触发
+
+focus和blur事件通常以某种方式改变用户界面，已提供可见的提示或额外功能（如在文本框下边显示下拉菜单）。change事件通常用于验证用户在字段输入的内容。如：focus可以改变焦点背景颜色表示被选中，blur恢复颜色，change事件检测用户在输入了不合规值时显示警告。
+
+```javascript
+let textbox = document.form[0].element[0];
+textbox.addeventlistener('focus',(event)=>{
+    let target = event.target;
+    if(target.style.backgroundcolor != 'red'){
+        target.style.backgroundcolor ='yellow';
+    } 
+});
+//在移除焦点和change时判断value是否为数值，
+textbox.addeventlistener('blur',(event)=>{
+    let target = event.target;
+    // /[^\d]/匹配非数值，输入非数值返回true
+    //三元运算符，true时返回red，false返回空白
+    target.style.backgroundcolor =/[^\d]/.test(target.value)?'red':'';
+    } 
+});
+textbox.addeventlistener('change',(event)=>{
+    let target = event.target;
+    target.style.backgroundcolor =/[^\d]/.test(target.value)?'red':'';
+    } 
+})
+```
+
+### 2、文本框编程
+
+表示文本框有单行文本框<input type='text'/>（不设置type值直接显示文本框）和多行文本框<textarea></textarea>两种。
+
+<input type='text'/>的size属性指定文本框的宽度（按字符计量），value属性指定文本的初始值，maxlength属性指定文本框允许的最多字符数。
+
+\<textarea\>元素创建多行文本框，rows属性指定文本框的高度（按字符计量），cols属性指定文本框的宽度（按字符计量）。多行文本框的初始值在标签内部。
+
+两种方法都可以通过value值访问内容。
+
+#### (1)选择文本
+
+支持
+
+
+
+
+
+## 八、额外内容
+
+### 1、正则表达式
+
+正则表达式是一组判断对应字符串是否符合正则表达式定义的一种工具。在js编程中有字面量模式和字符串模式。
+
+一般正则表达式以^匹配开头内容，以$匹配结尾内容。
+
+### 2、三元运算符
+
+形如 A ? B : C 的表达式为使用了三元运算符的判断语句。逻辑如下
+
+```javascript
+if( A ){
+    B;
+}else{
+    C;
+}
+//即判断 A 的布尔值，true时执行B；false时执行C。
+```
+
+
 
