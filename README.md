@@ -5,7 +5,7 @@
 ```js
 let giveUp;
 if(giveUp){
-	
+    console.log('nothing to lose so')
 }else{
     console.log('never give up!')
 }
