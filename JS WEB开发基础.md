@@ -1753,14 +1753,6 @@ textbox.addeventlistener('change',(event)=>{
 
 两种方法都可以通过value值访问内容。
 
-#### (1)选择文本
-
-支持
-
-
-
-
-
 ## 八、额外内容
 
 ### 1、正则表达式
@@ -1782,3 +1774,56 @@ if( A ){
 //即判断 A 的布尔值，true时执行B；false时执行C。
 ```
 
+## Flex布局
+
+父盒子，子项目
+
+主轴、侧轴
+
+父项属性
+
+flex-direction：控制主轴方向，值：row、row-reverse、column、colum-reverse
+
+justify-content：设置主轴内子元素排列方式，值：flex-start（从头部开始）、flex-end（从尾部开始）、center（居中对齐）、space-around（平分剩余空间）、space-between（先两边贴边，再平分剩余空间）
+
+flex-wrap：设置子元素是否换行，值：no-wrap、wrap（当为no-wrap时，即使子项设置有宽度，也会塞进一行）
+
+align-items：设置侧轴子元素排列方式（单行），值：flex-start、flex-end、center、stretch（拉伸）
+
+align-content（适用于flex-wrap：wrap情况）：
+
+设置侧轴子元素排列方式（多行），值：flex-start、flex-end、center、stretch、space-between、space-around 
+
+flex-flow（flex-direction、flex-wrap复合属性）：
+
+格式：flex-flow：column wrap
+
+子项属性
+
+flex：子项目占剩余空间的份数
+
+align-self：控制子项自己在侧轴上的排列方式 
+
+order：子项目序列号，默认为0，越小越靠近start端
+
+## ElementUI组件库
+
+24分栏
+
+<el-row>标签属性：
+
+gutter：x（分栏间隔，除去分栏间隔的剩余部分才会让el-col平分）
+
+type：flex（启用flex布局）
+
+justify，值为flex布局中的justify-content的值一致（设置对齐模式）
+
+<el-col>（包含在el-row中）标签属性：
+
+span：x（将区域分隔为整行的x/24）
+
+offset：x（自之前间隔整行的x/24）
+
+在24分栏中，el-row中的每个el-col的span值加起来等于24（可随便分配），即可得到混合分栏布局。
+
+## https相关知识
