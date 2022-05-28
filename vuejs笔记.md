@@ -1,4 +1,4 @@
-# Vuejs
+#  Vuejs
 
 ## 渐进式概念
 
@@ -1343,7 +1343,7 @@ module.export = {
     devserver: {
         //作用于的文件夹
         contentBase:
-        //是否实时监听
+        //布尔值，是否实时监听
         inline：
     }
 }
@@ -1355,6 +1355,36 @@ module.export = {
 ```
 
 ### 多环境配置分离
+
+在实际开发中，package.json包含运行所需要的库与组件，开发阶段需要增加或移除相关组件，而生成生产环境运行下的代码则需要某些组件（例如丑化插件）生成。因此，需要将开发与生产配置不同的package.json，并进行分离。
+
+分离操作：
+
+1、建立不同的xxx.config.js文件，可分为base.config.js（公共配置）、prod.config.js（生产配置，包含各种生产依赖）、dev.config.js（开发配置，包含webpack-dev-server等）
+
+2、npm install webpack-merge --save-dev（配置文件合并）
+
+3、配置xxx.config.js文件
+
+```js
+//prod.config.js配置文件
+const webpackMerge = require('webpack-merge')
+const baseConfig = require('./base.config')
+//将需要合并的两个config.js文件按以下方式导入
+module.exports = webpackMerge(baseConfig,{
+    //添加生产环境的相关配置
+})
+```
+
+4、在package.json指定webpack打包使用的配置文件
+
+```js
+"script": {
+	//为webpack指定使用的配置文件
+	"build": "webpack --config ./build/prod.config.js"
+    "dev": "webpack-dev-server --opne --config ./build/dev.config.js"
+}
+```
 
 
 
@@ -1522,9 +1552,703 @@ webpack.config.js配置
 
 运行报错：缺失插件（vue-loader14.0.0版本以上需要额外安装插件plugin），解决方法：更换vue-loader版本。
 
-### 
-
 ## Vue CLI
+
+脚手架工具。推荐版本vue-cli3，安装方式如下：
+
+npm install @vue/cli -g
+
+vue-cli3想使用2的模板可通过 npm install @vue/cli-init -g 拉取
+
+### vue-cli2
+
+创建项目——vue init webpack xxx（项目名）
+
+ESLint（按es语法规范化代码）可导入自定义规范
+
+unit test（单元测试 ）
+
+e2e（端到端测试）
+
+创建文件夹说明：
+
+babelrc——设置babel转换env的具体内容（如针对某一范围等）
+
+editorconfig——代码规范
+
+eslintignore——es规范限制忽略范围
+
+gitignore——上川到git忽略范围
+
+package-lock.json——记录node-modules安装的真实版本
+
+### vue-cli3
+
+创建项目——vue create xxx（项目名）
+
+## Vue-router
+
+实现前端渲染（前端渲染是在前后端分离的基础上实现的，其原理为更改location的值而启用某些组件。）
+
+### 安装步骤
+
+1.1、安装vue-router（npm install vue-router --save 生产式依赖）
+
+2.1、组件导入路由对象，并调用Vue.use(VueRouder)
+
+2.2、创建路由实例，并传入路由映射配置
+
+2.3、在vue实例中挂载创建的路由实例
+
+### 项目步骤
+
+1、创建router文件夹（可通过vue-cli自动创建）
+
+2、创建index.js文件，配置router
+
+```js
+//index.js配置
+import Vuerouter from 'vue-router'
+import Vue from 'vue'
+Vue.use(vuerputer)//通过Vue.use(插件)，安装插件
+const router = new Vuerouter({ //创建vuerouter对象
+    routes,   //将routes从router分离，用es6语法糖
+    mode:'history', //将更改url中hash切换为更改history模式
+	linkActiveclass:'active', //设置激活时的默认class属性名
+})
+const routes =[   //配置路由映射
+    
+]
+export default router //导出router，在外部使用
+```
+
+### 使用步骤
+
+```js
+//配置routes,有多个对象构成的数组
+import Home from '../component/home' //从对应目录导入组件
+import About from '../component/about'
+const routes = [
+    {	//配置默认显示的页面，当缺省时，重定向至/home
+    	path:''			
+       	rediret:'/home' 
+    },
+    {
+        path:'/home'，	//表示当url的path部分变化为当前时，则切换组件 
+        component:Home，
+    }，
+    {
+    	path:'/about'，
+        component:About，
+    }
+]
+```
+
+```vue
+<templat>
+    <router-link to="/home">首页</router-link> //通过router-link实现切换url的效果
+    <router-link to='/about'>关于</router-link>//通过router-view实现渲染组件的效果	
+    <router-view></router-view>
+</templat>
+```
+
+router实现的另一种方法：
+用 v-on:click 绑定 methods，在methods方法内对url（即$router）l进行push或replace操作。
+
+调用router时每个组件中包含$router对象，调用this.$router.push('/home')或this.$replace('/home')
+
+### router-link属性
+
+to：点击切换url的hash或者history
+
+tag：改变浏览器渲染的方式（默认渲染为<a>）
+
+replace：启用替换历史记录而非入栈的模式，无法回退页面
+
+active-class：当点击激活某个组件时，会在被点击的标签上增加class属性（可通过赋值修改）
+
+### 动态路由
+
+```js
+import User from '../component/home' 
+const routes = [
+    {	//按如下进行配置
+    	path:'/user/:userId'，
+        component:User，
+    }
+]
+```
+
+```vue
+//compoment vue文件
+<templat>
+  <div>
+    //动态路由的跳转需要严格按照配置输出，不然不显示
+    <router-link to="/user/zhangsan">用户</router-link> 
+    //从数据中动态获取写法
+    <router-link :to="'/user/'+userId">用户</router-link>
+    <router-view></router-view>
+    <h2>{{userId()}}</h2>        
+  </div>
+</templat>
+<script>
+    //在组件中通过以下设置，已经获取页面数据信息,同时也是路由传递数据的一种方法
+    export default{
+        name:'uesr',
+        compute:{
+            userId(){
+                //用$route获取主vue文件的数据
+                return this.$route.params.userId
+            }
+        }
+    }
+</script>
+```
+
+```vue
+//主vue文件
+<script>
+    export default {
+        data(){
+            useId:'lisi'
+        }
+    }
+</script>
+```
+
+实际开发中对应的url从数据中获取，可用v-bind将数据给到属性。需要取得动态路由的信息时，可以用route（处于活跃的路由）来寻找
+
+### router懒加载
+
+懒加载概念：当页面的脚本全部存在在一个文件中时，由于代码量过大，用户在打开页面时会因为加载脚本导致短暂空白，影响用户体验。懒加载的作用是将各个组件使用的脚本生产单独的文件，当使用脚本时，才调用对应脚本。
+
+设置方式：
+
+```js
+//设置方式为通过函数导入组件vue，取代 import Home from '../component/Home' 直接导入方式
+const Home = ()=>import('../component/Home')
+const routes = [
+	{
+    	path:'/home',
+        component:Home
+    }, 
+]
+```
+
+### 嵌套路由实现
+
+嵌套路由指在原先路由内部再配置一个路由，设置如下：
+
+```js
+//设置方式为通过函数导入组件vue，取代 import Home from '../component/Home' 直接导入方式	
+const Home = ()=>import('../component/Home')
+const HomeSetting = ()=>import('../component/home/HomeSetting')
+const routes = [
+	{
+    	path:'/home',
+        component:Home,
+        //子路由直接在父路由中定义
+        children：[
+        	{
+        	//子路由器不需要 /
+        	path：'homesetting'，
+        	componenet:HomeSetting
+    		}，
+		]
+    }, 
+]
+```
+
+```VUE
+//在父组件中使用
+<template>
+	<router-link to:'/home/homesetting'></router-link>
+	<router-view></router-view>
+</template>
+```
+
+### 路由数据传递
+
+路由间数据传递有两种方法：1、动态路由（params）2、query
+
+query数据获取
+
+```js
+const Profile = ()=>import '../component/profile/Profile'
+const routes = [
+    {
+        path:'/profile',
+		component:Profile
+    }
+]
+```
+
+```vue
+//主vue文件
+//如想要传递数据，需要将to属性设置如下
+<tenplate>
+    <router-link :to='{path:'/profile',query:{name:why,age:22,height:168}}'>档案</router-link>
+    //显示组件定义的内容
+    <router-view></router-view>
+</tenplate>
+```
+
+```vue
+//componet vue文件
+<template>
+	<h2>标题</h2>
+	//取得query数据
+	<p>{{$route.query}}</p>
+</template>
+```
+
+query获取数据的第二种方式（以router实现的第二种方式对应）
+
+```vue
+//主vue文件
+<template>
+	<button @click='profileclick'>
+        档案
+    </button>
+</template>
+<script>
+    export default{
+        name;'profile',
+        data(){
+            return{
+                
+            }
+        },
+        methods:{
+            profileclick(){
+                //在push的时候同步将数据传入
+                this.$router.push(
+                    {path:'/profile',
+                     query:{
+                         name:why,
+                         age:22,
+                         height:168}
+                    })
+            }
+        }
+    }
+</script>
+```
+
+### 导航守卫
+
+监听切换路由的事件。
+
+可以通过生命周期进行监听。vue的生命周期：
+
+created（）：组件被创建的时候进行调用
+
+mounted（）：组件搭载到dom里边进行调用
+
+updated（）：界面发生更新时进行调用（刷新或者{{}}数据发生改变）
+
+router内置了beforeEach方法，接收一个有to、from、next参数的函数（next为函数，且必须存在）
+
+```js
+const router=[
+    {
+        path:'/home',
+        component:()=>import '../component/Home',
+        //meta对象为元数据
+        meta:{
+        	title:'首页'
+    }
+    },
+]
+//形如，通过前置回调实现页面的标题随激活的route切换而切换：
+router.beforeEach((to,from,next)=>{
+    //从from跳转到to时执行以下代码
+    //meta是定义在配置路由中的设置
+    document.title = to.meta.title,
+    //document.title = to.matched[0].meta.title
+    //解决第一页不显示的写法
+    next()
+})，
+//后置回调不需要调用next()函数
+router.afterEach((to,from)=>{
+    
+})
+```
+
+以上为全局守卫，关于导航守卫还包括路由共享守卫及组件内的守卫。
+
+### keep-alive
+
+keepalive实现路由切换组件时保存路由的状态。每次切换路由（url改变导致router-view改变）都意味着组件经历一个完成的生命周期（被create和destroy），保存路由的状态则是打断其不要destroyed（只created不destroyed）。
+
+使用方法：
+
+在<router-view>标签外嵌套<keep-alive>可以保持组件不被销毁，同时也带出两个回调函数activated（）和deactivated（），代表使用回调函数的组件是否处于活跃状态。只有当keep-alive嵌套时，在组件中能使用回调，否则无效。
+
+keep-alive属性：include、exclude。两个属性接收字符串或正则表达式，include表示匹配的组件进行缓存，exclude表示匹配的组件不缓存。接收组件的name的值时，表示对应组件执行include或exclude。
+
+## promise（期约）
+
+promise提供了一种异步执行函数的封装方式，将多次回调的函数简洁结构。
+
+使用方法：
+
+new Promise（）接收一个带有resolve，reject两个参数（resolve、reject为函数）的函数。将调用异步的函数与执行的函数进行分离。
+
+```js
+//非promise形式
+setTimeout(()=>{
+    console.log('无期约')
+},1000)
+
+//promise形式
+new Promise((resolve,reject)=>{
+    //先假设延时后会执行一段代码
+    setTimeout(()=>{
+    	resolve();
+        reject()
+	},1000)
+}).then(()=>{
+    //在执行假设
+    console.log('期约')
+    //处理reject
+}).catch(()=>{
+    console.log('请求失败')
+})
+//.then(满足时调用函数).catch(不满足时调用函数)可改写为.then(满足时调用函数，不满足时调用函数)
+
+//期约的参数
+new Promise((resolve,reject)=>{
+    setTimeout((data)=>{
+        //传出data
+    	resolve(data)
+	},1000)
+}).then((data)=>{
+    //接收data
+    console.log(data)
+})
+```
+
+promise.all（）接收可遍历的对象（如数组）。一般传入promise对象的数组，仅当所有的resolve被执行时，才执行then（）方法的代码。
+
+## Vuex
+
+Vuex是为vue.js应用程序开发的状态管理模式。采用集中式存储管理应用的所有组件的转态，并以相应的规则保证状态以一种可预测的方式发生改变。
+
+与自己封装的对象做对比：实现响应式。
+
+需要通过vuex进行共享的数据：用户的登录状态，用户名称、头像、地理位置；商品的收藏，购物车的物品等。
+
+### 单页面状态管理
+
+state（变量）vue或者template中的属性
+
+actions（用户行为）在页面触发的事件
+
+view（页面）页面展示的内容
+
+state——》view——》actions——》state
+
+### 多页面状态管理使用
+
+1、src创建store文件夹，创建vuex配置脚本index.js
+
+2、在vuex配置脚本导入vue、vuex，创建并导出store实例
+
+（包含state、mutation、actions、getters、modules对象）
+
+state：保存状态（数据）
+
+#### actions
+
+：处理异步操作
+
+```js
+actions:{
+  aupdateinfo(context){ //变量相当于store实例对象
+  settimeout(()=>{
+    context.commit('在mutations定义的方法')
+    }，1000)
+  }
+}
+```
+
+在页面中的methods通过$store.dispatch('actions定义的方法')
+经过两层调用，实质为事件触发actions异步操作，待异步操作响应时触发同步操作。
+
+tip：可以将actions的异步操作包装成一个promise，如下：
+
+```js
+actions:{
+  aupdateinfo(context){ //变量相当于store实例对象
+    return new promise((resolve,reject)=>{
+      settimeout(()=>{
+        context.commit('在mutations定义的方法'),
+        resolve()
+	  }，1000)
+    })
+  }
+}
+//在触发actions的事件所在js调用then
+methods:{
+    updateinfo(){
+      this
+      .$store
+      .dispatch('aupdateinfo')
+      .then(res=>{
+        console.log(res)
+      })
+    }
+  }
+}
+```
+
+#### mutations
+
+：处理同步操作。在vuex脚本中配置好方法后。在监听操作的组件中添加methods方法并绑定，通过this.$store.commit('在vuex配置的方法')进行关联。（Vue.store状态更新的唯一方式）
+
+```js
+const store = new Vuxe.Store({
+  state:{
+      counter: 100,
+      student:[
+          {id:1,name:'lce',age:'18'},
+          {id:2,name:'lcj',age:'15'},
+          {id:3,name:'lyy',age:'20'}
+      ]
+  },
+  mutations: {
+    incrementcount(state,count){ //mutations可可以接收传入的数据
+      state.counter += count 
+    },
+    //使用payload的写法
+    incrementcount(state,payload){
+      state.counter += payload.count
+    }
+}
+}
+//vue中的调用
+//<button @clcik='addcounter(5)'>+5</button>                             
+//组件js中的定义
+export default {
+  name:'app',
+  methods: {
+    addcounter(count){ //传入的参数称为payload，需要传递多个数值时，可以将payload当做一个对象(使用特	  殊提交)
+      //1、普通提交风格（直接提交count）
+      this.$store.commit('incrementcount',count) //传出数据格式的写法
+      //2、特殊提交（用mutations事件类型提交）
+      this.$store.commit({
+          type: 'incrementcount',
+          count //这里的count实质上是一个包含原count数据的payload对象
+      })
+    },
+  }                           
+}
+```
+
+#### getters
+
+：类似于组件computed属性，写法如下：
+
+```js
+const store = new Vuxe.Store({
+  state:{
+      counter: 100,
+      student:[
+          {id:1,name:'lce',age:'18'},
+          {id:2,name:'lcj',age:'15'},
+          {id:3,name:'lyy',age:'20'}
+      ]
+  },
+  getters:{
+      powcounter(state){
+      	return state.counter*state.counter,
+      },
+      more16stu(state):{ //getters可以做运算及筛选操作
+        return state.stuedent.filter(s=> s.age>16)
+      },
+      more16stuLength(state, getters):{ //可以传入getters，在计算属性的基础上再做计算
+        return getters.more16stu.length                     
+      },
+      moreagestu(state): { //涉及需要传入数据才能判断的可以用回传一个function
+        return function(age) {
+            return state.students.filter(s => s.age > age)
+        }
+      }
+  }
+})
+//在vue中使用getters属性
+// <h2>{{$store.getters.powercounter}}</h2>
+```
+
+#### module
+
+相当于创建一个对象将state、getters、mutations、actions包含，可同以上方法进行使用。调用方法如下：
+
+```js
+modules：{
+    a:{
+        state:{
+          name:'lce',  
+        },
+        getters:{
+          fullname(state，getters，rootstate){ //getters可以通过rootstate取得外层state的数据
+              return state.name+'1111'
+          }
+        },
+        mutations:{
+          nameinfo(state){
+              console.log(state.name)
+          }
+        }    
+        actions:{
+          anameinfo(context){  //此刻的context不指store，而是指向模块a
+              context.commit('nameinfo')
+          }
+        }
+    },
+}
+//调用方法
+this.$store.state.a.name //modules将state加载到对应属性上，通过store的属性及模块名直接调用
+$store.getters.fullname//getters可以按之前方法直接调用
+```
+
+3、通过this.$store.state.变量名展示在view中。
+
+### state单一状态树
+
+ 在开发中用一个store管理所有的状态，而非创建多个store对象。
+
+### State的响应式
+
+State响应式在对象中只对有初始化的变量进行响应(在state中已经添加)，修改参数时可以随变量改变在页面展示。
+但对于直接添加进去的新的变量，则不能保持响应式，因为没有进行过变量初始化。需要用能够触发响应式的方法(如vue.set、vue.delete)进行插值或删除
+
+### mutation类型常量
+
+对于实际开发中，由于mutation内的方法定义过多，可以将函数名提取出来，用type进行代替。(为了防止代码编写时错误)
+方法如下：
+1，建立储存常量的js文件。用类型名导出函数名。
+2，导入类型常量文件及对应类型，在store配置js中，导入对应类型名，mutations用以下方法编写
+
+```js
+[类型名]{
+函数内容
+}
+```
+
+3，导入类型常量文件及对应类型，在使用方法的js的methods中定义：
+
+```js
+方法名(payload或其他变量){
+this.$ store.commit(类型名)//可使用对象模式
+}
+```
+
+### store文件夹目录
+
+state分离放在原文件夹
+
+mutations、getters、actions创建新的脚本文件储存，通过模块化导出导入
+
+modules内容创建文件夹并创建新的脚本文件
+
+## axios
+
+网络请求框架，发送请求后，返回服务器存储在对应位置的参数。
+
+使用方法：
+
+1、npm安装，在js文件中加载。
+
+2、直接使用方法
+
+```js
+axios({
+    url:'*' //请求的地址
+    params:{ //针对get请求，可以将require内容按对象的形式传入
+      type:'pop',
+      page: 1 
+    }
+    method：'get' //请求的方法
+}).then(res=>{
+  console.log(res);
+}) //使用promis方法
+```
+
+tip：axios包含了promis方法，可以按promis的方式进行处理
+
+axios.all ()方法，同promise类型类型，接收多个axios实例，仅当所有请求响应时才返回结果。可用axios.spread((res1,res2)=>{
+
+})将返回的数组结果进行拆分
+
+全局配置
+
+axios.defaul对象包含了请求的配置，可以进行baseurl、header等参数进行配置。（get需要配置params，post需要配置require body）
+
+axios实例及模块化封装
+
+axios.creat()方法创建axios实例，创建时传入配置方法中一样的属性。
+
+使用第三方框架，需要将框架与实际调用的代码通过中间封装好的模块进行关联，防止框架替换时增加工作量。创建方法：
+
+1、创建包含脚本文件的文件夹
+
+2、按axios.creat()实例创建，直接return。（由于实例包含promise方法，因此在使用实例时可以直接用then，catch方法），导出模块化接口
+
+```js
+export function request(config) {
+    const instance = axios.creat({
+        baseurl: '*',
+        timeout: 5000
+    })
+    return instance(config)
+}
+//在组件使用时
+import {request} from '存放axios配置脚本文件'
+export default {
+    name:'home',
+    methods:{
+        created(){
+          request({
+              url:'#'
+          }).then{
+              res=>	{
+                console.log(res)  
+              }
+          }.catch{
+              err=>{
+                console.log(err)
+              }
+          }
+        }
+    }
+}
+```
+
+拦截器
+
+可以对请求和响应进行拦截，可用于全局或者实例，语法如下：
+
+```js
+axios.interceptors.request.use(config=>{
+//操作拦截内容
+  return config //拦截后需要重新return出来
+},err=>{
+
+})
+
+axios.interceptors.response,use(res=>{
+//操作拦截
+    return res.date
+},err=>{
+    
+})
+```
+
+请求拦截器用于1、将数据转化为服务器能够接收的信息，2、加载时进行图标的显示
+
+响应拦截
 
 ## Vue项目
 
@@ -1536,5 +2260,13 @@ webpack.config.js配置
 
 3、<style>样式代码
 
-实际运行中vue文件会渲染成render函数进行编译，所以在实例开发中可以在组件化中使用驼峰命名法
+实际运行中vue文件会渲染成render函数（render函数可以）进行编译，所以在实例开发中可以在组件化中使用驼峰命名法
+
+vue.config.js配置文件会读取并写入vue的设置中
+
+### 项目构建顺序：
+
+1、项目结构创建
+
+2、基本css文件引入
 
